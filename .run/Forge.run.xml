@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Forge" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="java-18-openjdk-amd64" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <option name="MAIN_CLASS_NAME" value="forge.view.Main" />
+    <module name="forge-gui-desktop" />
+    <option name="PROGRAM_PARAMETERS" value="sim -d &quot;a7df4cdca1054dc3915489542dd2e9dd.dck&quot; &quot;a7df4cdca1054dc3915489542dd2e9dd.dck&quot; -n 1 -q" />
+    <selectedOptions>
+      <option name="environmentVariables" visible="false" />
+    </selectedOptions>
+    <option name="VM_PARAMETERS" value="-Xms768m -XX:+UseParallelGC -Dsun.java2d.xrender=false" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/forge-gui-desktop" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

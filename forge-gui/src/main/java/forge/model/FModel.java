@@ -105,202 +105,207 @@ public final class FModel {
             avatarPool, conspiracyPool, dungeonPool;
 
     public static void initialize(final IProgressBar progressBar, Function<ForgePreferences, Void> adjustPrefs) {
-        //init version to log
-        System.out.println("Forge v." + GuiBase.getInterface().getCurrentVersion() + " (" + GuiBase.getInterface() + ")");
-        //Device
-        if (GuiBase.isAndroid()) //todo get device on other mobile platforms
-            System.out.println(GuiBase.getDeviceName() + " (RAM: " + GuiBase.getDeviceRAM() + "MB, Android " + GuiBase.getAndroidRelease() + " API Level " + GuiBase.getAndroidAPILevel() + ")");
-        else
-            System.out.println(System.getProperty("os.name") + " (" + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ")");
-
-        ImageKeys.initializeDirs(
-                ForgeConstants.CACHE_CARD_PICS_DIR, ForgeConstants.CACHE_CARD_PICS_SUBDIR,
-                ForgeConstants.CACHE_TOKEN_PICS_DIR, ForgeConstants.CACHE_ICON_PICS_DIR,
-                ForgeConstants.CACHE_BOOSTER_PICS_DIR, ForgeConstants.CACHE_FATPACK_PICS_DIR,
-                ForgeConstants.CACHE_BOOSTERBOX_PICS_DIR, ForgeConstants.CACHE_PRECON_PICS_DIR,
-                ForgeConstants.CACHE_TOURNAMENTPACK_PICS_DIR);
-
-        // Instantiate preferences: quest and regular
-        // Preferences are initialized first so that the splash screen can be translated.
         try {
-            preferences = new ForgePreferences();
-            if (adjustPrefs != null) {
-                adjustPrefs.apply(preferences);
-            }
-            GamePlayerUtil.getGuiPlayer().setName(preferences.getPref(FPref.PLAYER_NAME));
-        }
-        catch (final Exception exn) {
-            throw new RuntimeException(exn);
-        }
+            //init version to log
+            System.out.println("Forge v." + GuiBase.getInterface().getCurrentVersion() + " (" + GuiBase.getInterface() + ")");
+            //Device
+            if (GuiBase.isAndroid()) //todo get device on other mobile platforms
+                System.out.println(GuiBase.getDeviceName() + " (RAM: " + GuiBase.getDeviceRAM() + "MB, Android " + GuiBase.getAndroidRelease() + " API Level " + GuiBase.getAndroidAPILevel() + ")");
+            else
+                System.out.println(System.getProperty("os.name") + " (" + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ")");
 
-        Lang.createInstance(FModel.getPreferences().getPref(FPref.UI_LANGUAGE));
-        Localizer.getInstance().initialize(FModel.getPreferences().getPref(FPref.UI_LANGUAGE), ForgeConstants.LANG_DIR);
+            ImageKeys.initializeDirs(
+                    ForgeConstants.CACHE_CARD_PICS_DIR, ForgeConstants.CACHE_CARD_PICS_SUBDIR,
+                    ForgeConstants.CACHE_TOKEN_PICS_DIR, ForgeConstants.CACHE_ICON_PICS_DIR,
+                    ForgeConstants.CACHE_BOOSTER_PICS_DIR, ForgeConstants.CACHE_FATPACK_PICS_DIR,
+                    ForgeConstants.CACHE_BOOSTERBOX_PICS_DIR, ForgeConstants.CACHE_PRECON_PICS_DIR,
+                    ForgeConstants.CACHE_TOURNAMENTPACK_PICS_DIR);
 
-        final ProgressObserver progressBarBridge = (progressBar == null) ?
-                ProgressObserver.emptyObserver : new ProgressObserver() {
-            @Override
-            public void setOperationName(final String name, final boolean usePercents) {
-                FThreads.invokeInEdtLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        progressBar.setDescription(name);
-                        progressBar.setPercentMode(usePercents);
-                    }
-                });
-            }
-
-            @Override
-            public void report(final int current, final int total) {
-                FThreads.invokeInEdtLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        progressBar.setMaximum(total);
-                        progressBar.setValue(current);
-                    }
-                });
-            }
-        };
-
-        if (new AutoUpdater(true).attemptToUpdate()) {
-            //
-        }
-
-        //load card database
-        final CardStorageReader reader = new CardStorageReader(ForgeConstants.CARD_DATA_DIR, progressBarBridge,
-                FModel.getPreferences().getPrefBoolean(FPref.LOAD_CARD_SCRIPTS_LAZILY));
-        final CardStorageReader tokenReader = new CardStorageReader(ForgeConstants.TOKEN_DATA_DIR, progressBarBridge,
-                FModel.getPreferences().getPrefBoolean(FPref.LOAD_CARD_SCRIPTS_LAZILY));
-        CardStorageReader customReader;
-        try {
-           customReader  = new CardStorageReader(ForgeConstants.USER_CUSTOM_CARDS_DIR, progressBarBridge, false);
-        } catch (Exception e) {
-            customReader = null;
-        }
-        CardStorageReader customTokenReader;
-        try {
-            customTokenReader  = new CardStorageReader(ForgeConstants.USER_CUSTOM_TOKENS_DIR, progressBarBridge, false);
-        } catch (Exception e) {
-            customTokenReader = null;
-        }
-
-        // do this first so PaperCards see the real preference
-        CardTranslation.preloadTranslation(preferences.getPref(FPref.UI_LANGUAGE), ForgeConstants.LANG_DIR);
-
-        magicDb = new StaticData(reader, tokenReader, customReader, customTokenReader, ForgeConstants.EDITIONS_DIR,
-                                 ForgeConstants.USER_CUSTOM_EDITIONS_DIR, ForgeConstants.BLOCK_DATA_DIR, ForgeConstants.SETLOOKUP_DIR,
-                                 FModel.getPreferences().getPref(FPref.UI_PREFERRED_ART),
-                                 FModel.getPreferences().getPrefBoolean(FPref.UI_LOAD_UNKNOWN_CARDS),
-                                 FModel.getPreferences().getPrefBoolean(FPref.UI_LOAD_NONLEGAL_CARDS),
-                                 FModel.getPreferences().getPrefBoolean(FPref.ALLOW_CUSTOM_CARDS_IN_DECKS_CONFORMANCE),
-                                 FModel.getPreferences().getPrefBoolean(FPref.UI_SMART_CARD_ART)
-                );
-
-        //create profile dirs if they don't already exist
-        for (final String dname : ForgeConstants.PROFILE_DIRS) {
-            final File path = new File(dname);
-            if (path.isDirectory()) {
-                // already exists
-                continue;
-            }
-            if (!path.mkdirs()) {
-                throw new RuntimeException("cannot create profile directory: " + dname);
-            }
-        }
-
-        ForgePreferences.DEV_MODE = preferences.getPrefBoolean(FPref.DEV_MODE_ENABLED);
-        ForgePreferences.UPLOAD_DRAFT = ForgePreferences.NET_CONN;
-
-        formats = new GameFormat.Collection(new GameFormat.Reader( new File(ForgeConstants.FORMATS_DATA_DIR),
-                new File(ForgeConstants.USER_FORMATS_DIR), preferences.getPrefBoolean(FPref.LOAD_ARCHIVED_FORMATS)));
-
-        magicDb.setStandardPredicate(formats.getStandard().getFilterRules());
-        magicDb.setPioneerPredicate(formats.getPioneer().getFilterRules());
-        magicDb.setModernPredicate(formats.getModern().getFilterRules());
-        magicDb.setCommanderPredicate(formats.get("Commander").getFilterRules());
-        magicDb.setOathbreakerPredicate(formats.get("Oathbreaker").getFilterRules());
-        magicDb.setBrawlPredicate(formats.get("Brawl").getFilterRules());
-
-        magicDb.setFilteredHandsEnabled(preferences.getPrefBoolean(FPref.FILTERED_HANDS));
-        magicDb.setMulliganRule(MulliganDefs.MulliganRule.valueOf(preferences.getPref(FPref.MULLIGAN_RULE)));
-
-        blocks = new StorageBase<>("Block definitions", new CardBlock.Reader(ForgeConstants.BLOCK_DATA_DIR + "blocks.txt", magicDb.getEditions()));
-        //setblockLands
-        for (final CardBlock b : blocks) {
-            magicDb.getBlockLands().add(b.getLandSet().getCode());
-        }
-        questPreferences = new QuestPreferences();
-        conquestPreferences = new ConquestPreferences();
-        fantasyBlocks = new StorageBase<>("Custom blocks", new CardBlock.Reader(ForgeConstants.BLOCK_DATA_DIR + "fantasyblocks.txt", magicDb.getEditions()));
-        themedChaosDrafts = new StorageBase<>("Themed Chaos Drafts", new ThemedChaosDraft.Reader(ForgeConstants.BLOCK_DATA_DIR + "chaosdraftthemes.txt"));
-        planes = new StorageBase<>("Conquest planes", new ConquestPlane.Reader(ForgeConstants.CONQUEST_PLANES_DIR + "planes.txt"));
-        Map<String, QuestWorld> standardWorlds = new QuestWorld.Reader(ForgeConstants.QUEST_WORLD_DIR + "worlds.txt").readAll();
-        Map<String, QuestWorld> customWorlds = new QuestWorld.Reader(ForgeConstants.USER_QUEST_WORLD_DIR + "customworlds.txt").readAll();
-        for (QuestWorld world:customWorlds.values()){
-            world.setCustom(true);
-        }
-        standardWorlds.putAll(customWorlds);
-        worlds = new StorageBase<>("Quest worlds", null, standardWorlds);
-
-        Spell.setPerformanceMode(preferences.getPrefBoolean(FPref.PERFORMANCE_MODE));
-
-        loadDynamicGamedata();
-
-        if (progressBar != null) {
-            FThreads.invokeInEdtLater(new Runnable() {
-                @Override
-                public void run() {
-                    progressBar.setDescription(Localizer.getInstance().getMessage("splash.loading.decks"));
+            // Instantiate preferences: quest and regular
+            // Preferences are initialized first so that the splash screen can be translated.
+            try {
+                preferences = new ForgePreferences();
+                if (adjustPrefs != null) {
+                    adjustPrefs.apply(preferences);
                 }
-            });
-        }
-
-        decks = new CardCollections();
-        quest = new QuestController();
-        conquest = new ConquestController();
-
-        CardPreferences.load();
-        DeckPreferences.load();
-        ItemManagerConfig.load();
-        ConquestUtil.updateRarityFilterOdds();
-
-        achievements = Maps.newHashMap();
-        achievements.put(GameType.Constructed, new ConstructedAchievements());
-        achievements.put(GameType.Draft, new DraftAchievements());
-        achievements.put(GameType.Sealed, new SealedAchievements());
-        achievements.put(GameType.Quest, new QuestAchievements());
-        achievements.put(GameType.PlanarConquest, new PlanarConquestAchievements());
-        achievements.put(GameType.Puzzle, new PuzzleAchievements());
-
-        //preload AI profiles
-        AiProfileUtil.loadAllProfiles(ForgeConstants.AI_PROFILE_DIR);
-
-        //generate Deck Gen matrix
-        if(!FModel.getPreferences().getPrefBoolean(FPref.LOAD_CARD_SCRIPTS_LAZILY)
-                &&FModel.getPreferences().getPrefBoolean(FPref.DECKGEN_CARDBASED)) {
-            boolean commanderDeckGenMatrixLoaded=CardRelationMatrixGenerator.initialize();
-            deckGenMatrixLoaded=CardArchetypeLDAGenerator.initialize();
-            if(!commanderDeckGenMatrixLoaded){
-                deckGenMatrixLoaded=false;
+                GamePlayerUtil.getGuiPlayer().setName(preferences.getPref(FPref.PLAYER_NAME));
             }
-        }
+            catch (final Exception exn) {
+                throw new RuntimeException(exn);
+            }
 
-        if (GuiBase.getInterface().isLibgdxPort() && GuiBase.getDeviceRAM() < 5000)
-            return; // don't preload ItemPool on mobile port with less than 5GB RAM
+            Lang.createInstance(FModel.getPreferences().getPref(FPref.UI_LANGUAGE));
+            Localizer.getInstance().initialize(FModel.getPreferences().getPref(FPref.UI_LANGUAGE), ForgeConstants.LANG_DIR);
 
-        //common ItemPool to preload
-        allCardsNoAlt = getAllCardsNoAlt();
-        archenemyCards = getArchenemyCards();
-        planechaseCards = getPlanechaseCards();
-        if (GuiBase.getInterface().isLibgdxPort()) {
-            //preload mobile Itempool
-            uniqueCardsNoAlt = getUniqueCardsNoAlt();
-        } else {
-            //preload Desktop Itempool
-            commanderPool = getCommanderPool();
-            brawlCommander = getBrawlCommander();
-            tinyLeadersCommander = getTinyLeadersCommander();
-            avatarPool = getAvatarPool();
-            conspiracyPool = getConspiracyPool();
+            final ProgressObserver progressBarBridge = (progressBar == null) ?
+                    ProgressObserver.emptyObserver : new ProgressObserver() {
+                @Override
+                public void setOperationName(final String name, final boolean usePercents) {
+                    FThreads.invokeInEdtLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            progressBar.setDescription(name);
+                            progressBar.setPercentMode(usePercents);
+                        }
+                    });
+                }
+
+                @Override
+                public void report(final int current, final int total) {
+                    FThreads.invokeInEdtLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            progressBar.setMaximum(total);
+                            progressBar.setValue(current);
+                        }
+                    });
+                }
+            };
+
+            if (new AutoUpdater(true).attemptToUpdate()) {
+                //
+            }
+
+            //load card database
+            final CardStorageReader reader = new CardStorageReader(ForgeConstants.CARD_DATA_DIR, progressBarBridge,
+                    FModel.getPreferences().getPrefBoolean(FPref.LOAD_CARD_SCRIPTS_LAZILY));
+            final CardStorageReader tokenReader = new CardStorageReader(ForgeConstants.TOKEN_DATA_DIR, progressBarBridge,
+                    FModel.getPreferences().getPrefBoolean(FPref.LOAD_CARD_SCRIPTS_LAZILY));
+            CardStorageReader customReader;
+            try {
+               customReader  = new CardStorageReader(ForgeConstants.USER_CUSTOM_CARDS_DIR, progressBarBridge, false);
+            } catch (Exception e) {
+                customReader = null;
+            }
+            CardStorageReader customTokenReader;
+            try {
+                customTokenReader  = new CardStorageReader(ForgeConstants.USER_CUSTOM_TOKENS_DIR, progressBarBridge, false);
+            } catch (Exception e) {
+                customTokenReader = null;
+            }
+
+            // do this first so PaperCards see the real preference
+            CardTranslation.preloadTranslation(preferences.getPref(FPref.UI_LANGUAGE), ForgeConstants.LANG_DIR);
+
+            magicDb = new StaticData(reader, tokenReader, customReader, customTokenReader, ForgeConstants.EDITIONS_DIR,
+                                     ForgeConstants.USER_CUSTOM_EDITIONS_DIR, ForgeConstants.BLOCK_DATA_DIR, ForgeConstants.SETLOOKUP_DIR,
+                                     FModel.getPreferences().getPref(FPref.UI_PREFERRED_ART),
+                                     FModel.getPreferences().getPrefBoolean(FPref.UI_LOAD_UNKNOWN_CARDS),
+                                     FModel.getPreferences().getPrefBoolean(FPref.UI_LOAD_NONLEGAL_CARDS),
+                                     FModel.getPreferences().getPrefBoolean(FPref.ALLOW_CUSTOM_CARDS_IN_DECKS_CONFORMANCE),
+                                     FModel.getPreferences().getPrefBoolean(FPref.UI_SMART_CARD_ART)
+                    );
+
+            //create profile dirs if they don't already exist
+            for (final String dname : ForgeConstants.PROFILE_DIRS) {
+                final File path = new File(dname);
+                if (path.isDirectory()) {
+                    // already exists
+                    continue;
+                }
+                if (!path.mkdirs()) {
+                    throw new RuntimeException("cannot create profile directory: " + dname);
+                }
+            }
+
+            ForgePreferences.DEV_MODE = preferences.getPrefBoolean(FPref.DEV_MODE_ENABLED);
+            ForgePreferences.UPLOAD_DRAFT = ForgePreferences.NET_CONN;
+
+            formats = new GameFormat.Collection(new GameFormat.Reader( new File(ForgeConstants.FORMATS_DATA_DIR),
+                    new File(ForgeConstants.USER_FORMATS_DIR), preferences.getPrefBoolean(FPref.LOAD_ARCHIVED_FORMATS)));
+
+            magicDb.setStandardPredicate(formats.getStandard().getFilterRules());
+            magicDb.setPioneerPredicate(formats.getPioneer().getFilterRules());
+            magicDb.setModernPredicate(formats.getModern().getFilterRules());
+            magicDb.setCommanderPredicate(formats.get("Commander").getFilterRules());
+            magicDb.setOathbreakerPredicate(formats.get("Oathbreaker").getFilterRules());
+            magicDb.setBrawlPredicate(formats.get("Brawl").getFilterRules());
+
+            magicDb.setFilteredHandsEnabled(preferences.getPrefBoolean(FPref.FILTERED_HANDS));
+            magicDb.setMulliganRule(MulliganDefs.MulliganRule.valueOf(preferences.getPref(FPref.MULLIGAN_RULE)));
+
+            blocks = new StorageBase<>("Block definitions", new CardBlock.Reader(ForgeConstants.BLOCK_DATA_DIR + "blocks.txt", magicDb.getEditions()));
+            //setblockLands
+            for (final CardBlock b : blocks) {
+                magicDb.getBlockLands().add(b.getLandSet().getCode());
+            }
+            questPreferences = new QuestPreferences();
+            conquestPreferences = new ConquestPreferences();
+            fantasyBlocks = new StorageBase<>("Custom blocks", new CardBlock.Reader(ForgeConstants.BLOCK_DATA_DIR + "fantasyblocks.txt", magicDb.getEditions()));
+            themedChaosDrafts = new StorageBase<>("Themed Chaos Drafts", new ThemedChaosDraft.Reader(ForgeConstants.BLOCK_DATA_DIR + "chaosdraftthemes.txt"));
+            planes = new StorageBase<>("Conquest planes", new ConquestPlane.Reader(ForgeConstants.CONQUEST_PLANES_DIR + "planes.txt"));
+            Map<String, QuestWorld> standardWorlds = new QuestWorld.Reader(ForgeConstants.QUEST_WORLD_DIR + "worlds.txt").readAll();
+            Map<String, QuestWorld> customWorlds = new QuestWorld.Reader(ForgeConstants.USER_QUEST_WORLD_DIR + "customworlds.txt").readAll();
+            for (QuestWorld world:customWorlds.values()){
+                world.setCustom(true);
+            }
+            standardWorlds.putAll(customWorlds);
+            worlds = new StorageBase<>("Quest worlds", null, standardWorlds);
+
+            Spell.setPerformanceMode(preferences.getPrefBoolean(FPref.PERFORMANCE_MODE));
+
+            loadDynamicGamedata();
+
+            if (progressBar != null) {
+                FThreads.invokeInEdtLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        progressBar.setDescription(Localizer.getInstance().getMessage("splash.loading.decks"));
+                    }
+                });
+            }
+
+            decks = new CardCollections();
+            quest = new QuestController();
+            conquest = new ConquestController();
+
+            CardPreferences.load();
+            DeckPreferences.load();
+            ItemManagerConfig.load();
+            ConquestUtil.updateRarityFilterOdds();
+
+            achievements = Maps.newHashMap();
+            achievements.put(GameType.Constructed, new ConstructedAchievements());
+            achievements.put(GameType.Draft, new DraftAchievements());
+            achievements.put(GameType.Sealed, new SealedAchievements());
+            achievements.put(GameType.Quest, new QuestAchievements());
+            achievements.put(GameType.PlanarConquest, new PlanarConquestAchievements());
+            achievements.put(GameType.Puzzle, new PuzzleAchievements());
+
+            //preload AI profiles
+            AiProfileUtil.loadAllProfiles(ForgeConstants.AI_PROFILE_DIR);
+
+            //generate Deck Gen matrix
+            if(!FModel.getPreferences().getPrefBoolean(FPref.LOAD_CARD_SCRIPTS_LAZILY)
+                    &&FModel.getPreferences().getPrefBoolean(FPref.DECKGEN_CARDBASED)) {
+                boolean commanderDeckGenMatrixLoaded=CardRelationMatrixGenerator.initialize();
+                deckGenMatrixLoaded=CardArchetypeLDAGenerator.initialize();
+                if(!commanderDeckGenMatrixLoaded){
+                    deckGenMatrixLoaded=false;
+                }
+            }
+
+            if (GuiBase.getInterface().isLibgdxPort() && GuiBase.getDeviceRAM() < 5000)
+                return; // don't preload ItemPool on mobile port with less than 5GB RAM
+
+            //common ItemPool to preload
+            allCardsNoAlt = getAllCardsNoAlt();
+            archenemyCards = getArchenemyCards();
+            planechaseCards = getPlanechaseCards();
+            if (GuiBase.getInterface().isLibgdxPort()) {
+                //preload mobile Itempool
+                uniqueCardsNoAlt = getUniqueCardsNoAlt();
+            } else {
+                //preload Desktop Itempool
+                commanderPool = getCommanderPool();
+                brawlCommander = getBrawlCommander();
+                tinyLeadersCommander = getTinyLeadersCommander();
+                avatarPool = getAvatarPool();
+                conspiracyPool = getConspiracyPool();
+            }
+        } catch (Exception ex){
+            System.out.println("====>");
+            System.out.println(ex);
         }
     }
 

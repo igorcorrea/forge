@@ -2,12 +2,9 @@ package forge.view;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -41,6 +38,7 @@ import forge.util.storage.IStorage;
 
 public class SimulateMatch {
     public static void simulate(String[] args) {
+        System.out.println("FModel.initialize(null, null);");
         FModel.initialize(null, null);
 
         System.out.println("Simulation mode");
@@ -207,11 +205,19 @@ public class SimulateMatch {
             System.out.println(l);
         }
 
+        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
         // If both players life totals to 0 in a single turn, the game should end in a draw
         if (g1.getOutcome().isDraw()) {
             System.out.printf("\nGame Result: Game %d ended in a Draw! Took %d ms.%n", 1 + iGame, sw.getTime());
         } else {
-            System.out.printf("\nGame Result: Game %d ended in %d ms. %s has won!\n%n", 1 + iGame, sw.getTime(), g1.getOutcome().getWinningLobbyPlayer().getName());
+            System.out.printf("\n* RESULT { \"deck1\": \"%s\", \"deck2\": \"%s\", \"winner\": \"%s\", \"time\": \"%s\", \"durationInMs\": %d }",
+                    mc.getPlayers().get(0).getDeck().getName(),
+                    mc.getPlayers().get(1).getDeck().getName(),
+                    g1.getOutcome().getWinningPlayer().getDeck().getName(),
+                    dateFormat.format(new Date()),
+                    sw.getTime()
+            );
+//            System.out.printf("\nGame Result: Game %d ended in %d ms. %s has won!\n%n", 1 + iGame, sw.getTime(), g1.getOutcome().getWinningLobbyPlayer().getName());
         }
     }
 
