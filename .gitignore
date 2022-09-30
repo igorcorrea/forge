@@ -78,3 +78,6 @@ forge-gui/tools/AllCards.json
 forge-gui/tools/EditionTrackingResults
 forge-gui/tools/PerSetTrackingResults
 
+
+# maven
+.m2

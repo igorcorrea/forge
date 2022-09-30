@@ -12,4 +12,5 @@
             <url>http://4thline.org/m2</url>
         </mirror>
     </mirrors>
+    <localRepository>/home/igorcorrea/tcc/download/forge/.m2<LocalRepository>
 </settings>
