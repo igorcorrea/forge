@@ -629,6 +629,7 @@ public class Player extends GameEntity implements Comparable<Player> {
         }
 
         loseLife(lifePayment, false, false);
+        cause.setPaidLife(lifePayment);
 
         // Run triggers
         final Map<AbilityKey, Object> runParams = AbilityKey.mapFromPlayer(this);
@@ -2639,13 +2640,12 @@ public class Player extends GameEntity implements Comparable<Player> {
         CardCollectionView list = getCardsIn(ZoneType.Battlefield);
 
         for (Card c : list) {
-            if (c.getDamageHistory().getCreatureAttackedThisCombat()) {
-                c.getDamageHistory().setCreatureAttackedThisCombat(null);
+            if (c.getDamageHistory().getCreatureAttackedThisCombat() > 0) {
+                c.getDamageHistory().setCreatureAttackedThisCombat(null, 0);
             }
             if (c.getDamageHistory().getCreatureBlockedThisCombat()) {
                 c.getDamageHistory().setCreatureBlockedThisCombat(false);
             }
-
             if (c.getDamageHistory().getCreatureGotBlockedThisCombat()) {
                 c.getDamageHistory().setCreatureGotBlockedThisCombat(false);
             }

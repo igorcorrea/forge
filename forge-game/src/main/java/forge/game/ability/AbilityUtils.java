@@ -1723,12 +1723,12 @@ public class AbilityUtils {
                                 && ZoneType.Battlefield.name().equals(t.getParam("Destination"))) {
                            return doXMath(c.getXManaCostPaid(), expr, c, ctb);
                         } else if (TriggerType.SpellCast.equals(t.getMode())) {
-                            // Cast Trigger like  Hydroid Krasis
-                            SpellAbility castSA = (SpellAbility) root.getTriggeringObject(AbilityKey.SpellAbility);
-                            if (castSA == null || castSA.getXManaCostPaid() == null) {
+                            // Cast Trigger like Hydroid Krasis, use SI because Unbound Flourishing might change X
+                            SpellAbilityStackInstance castSI = (SpellAbilityStackInstance) root.getTriggeringObject(AbilityKey.StackInstance);
+                            if (castSI == null) {
                                 return doXMath(0, expr, c, ctb);
                             }
-                            return doXMath(castSA.getXManaCostPaid(), expr, c, ctb);
+                            return doXMath(castSI.getXManaPaid(), expr, c, ctb);
                         } else if (TriggerType.Cycled.equals(t.getMode())) {
                             SpellAbility cycleSA = (SpellAbility) sa.getTriggeringObject(AbilityKey.Cause);
                             if (cycleSA == null || cycleSA.getXManaCostPaid() == null) {
@@ -1803,6 +1803,11 @@ public class AbilityUtils {
                 if (sq[0].equals("TriggeredManaSpent")) {
                     final SpellAbility root = (SpellAbility) sa.getRootAbility().getTriggeringObject(AbilityKey.SpellAbility);
                     return root == null ? 0 : root.getTotalManaSpent();
+                }
+                // Count$TriggeredLifeSpent
+                if (sq[0].equals("TriggeredLifeSpent")) {
+                    final SpellAbility root = (SpellAbility) sa.getRootAbility().getTriggeringObject(AbilityKey.SpellAbility);
+                    return root == null ? 0 : root.getAmountLifePaid();
                 }
 
                 // Count$ManaColorsPaid

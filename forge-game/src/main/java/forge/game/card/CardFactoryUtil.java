@@ -1791,6 +1791,19 @@ public class CardFactoryUtil {
             parsedTrigger.setOverridingAbility(sp);
 
             inst.addTrigger(parsedTrigger);
+        } else if (keyword.startsWith("Squad")) {
+            final String trigScript = "Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | " +
+                    "ValidCard$ Card.Self+wasCast | CheckSVar$ SquadAmount | Secondary$ True | " +
+                    "TriggerDescription$ When this creature enters the battlefield, create that many tokens that " +
+                    "are copies of it.";
+            final String abString = "DB$ CopyPermanent | Defined$ TriggeredCard | NumCopies$ SquadAmount";
+
+            final Trigger squadTrigger = TriggerHandler.parseTrigger(trigScript, card, intrinsic);
+            final SpellAbility squadAbility = AbilityFactory.getAbility(abString, card);
+            squadAbility.setSVar("SquadAmount", "0");
+            squadTrigger.setOverridingAbility(squadAbility);
+            squadTrigger.setSVar("SquadAmount", "0");
+            inst.addTrigger(squadTrigger);
         } else if (keyword.equals("Storm")) {
             final String actualTrigger = "Mode$ SpellCast | ValidCard$ Card.Self | TriggerZones$ Stack | Secondary$ True"
                     + "| TriggerDescription$ Storm (" + inst.getReminderText() + ")";
@@ -1979,7 +1992,7 @@ public class CardFactoryUtil {
             final Cost cost = new Cost(k[1], false);
             String costDesc = cost.toSimpleString();
 
-            String strTrig = "Mode$ BecomesTarget | ValidSource$ Card.OppCtrl | ValidTarget$ Card.Self "
+            String strTrig = "Mode$ BecomesTarget | ValidSource$ SpellAbility.OppCtrl | ValidTarget$ Card.Self "
                     + " | Secondary$ True | TriggerZones$ Battlefield | TriggerDescription$ Ward " + costDesc + " ("
                     + inst.getReminderText() + ")";
             String effect = "DB$ Counter | Defined$ TriggeredSourceSA | UnlessCost$ " + k[1]
@@ -2329,14 +2342,14 @@ public class CardFactoryUtil {
                 re.getOverridingAbility().setSVar("Sunburst", "Count$Converge");
             }
             inst.addReplacement(re);
-        } else if (keyword.startsWith("Ravenous")) {
+        } else if (keyword.equals("Ravenous")) {
             String repeffStr = "Event$ Moved | ValidCard$ Card.Self | Destination$ Battlefield | " +
                     " | ReplacementResult$ Updated | Description$ Ravenous (" + inst.getReminderText() + ")";
 
             String counterStr = "DB$ PutCounter | CounterType$ P1P1 | ETB$ True | CounterNum$ X";
             SpellAbility countersSA = AbilityFactory.getAbility(counterStr, card);
 
-            String delTrigStr = "DB$ DelayedTrigger | CheckSVar$ X | SVarCompare$ GE5 | " +
+            String delTrigStr = "DB$ DelayedTrigger | CheckSVar$ Count$xPaid | SVarCompare$ GE5 | " +
                     "Mode$ ChangesZone | ValidCard$ Card.Self | Origin$ Any | Destination$ Battlefield | " +
                     "TriggerDescription$ If X is 5 or more, draw a card when it enters.";
             AbilitySub delTrigSub = (AbilitySub) AbilityFactory.getAbility(delTrigStr, card);
@@ -2356,6 +2369,7 @@ public class CardFactoryUtil {
             ReplacementEffect re = ReplacementHandler.parseReplacement(repeffStr, host, intrinsic, card);
 
             re.setOverridingAbility(countersSA);
+            countersSA.setSVar("X", "Count$xPaid");
 
             inst.addReplacement(re);
         } else if (keyword.startsWith("Read ahead")) {
